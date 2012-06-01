@@ -3,4 +3,5 @@
 *.jpeg
 *.png
 montage.sh
+.*.swp
 *.log
