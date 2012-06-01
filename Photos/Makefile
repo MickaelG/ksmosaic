@@ -8,9 +8,7 @@ all: $(ALL_1PX_TARGETS) $(ALL_MIN_TARGETS)
 %.1px.png: %.JPG
 	convert -resize '1x1!' $< $@
 
-MIN_SIZE=150x100
-MIN_SIZE=15x10
-%.min.jpg: %.JPG Makefile
+%.min.jpg: %.JPG ../Makefile.conf
 	convert -resize $(MIN_SIZE) $< $@
 
 clean:
