@@ -62,18 +62,20 @@ class Photo:
 					if tempdist < dist_threshold:
 						#print ("Added to random list")
 						distlist.append( (tempdist,image) )
-				chooselist = []
-				#print ("DEBUG: " + str(distlist))
-				for elem in distlist:
-					nb_elem = int(10*(dist_threshold-elem[0]))
-					for i in range(nb_elem):
-						chooselist.append(elem)
-				if len(chooselist) > 0:
-					rand_choosen = chooselist[random.randrange(len(chooselist))]
+				if rand:
+					chooselist = []
+					for elem in distlist:
+						nb_elem = int(10*(dist_threshold-elem[0]))
+						for i in range(nb_elem):
+							chooselist.append(elem)
+					if len(chooselist) > 0:
+						rand_choosen = chooselist[random.randrange(len(chooselist))]
+					else:
+						rand_choosen = (min_distance,choosen)
 				else:
 					rand_choosen = (min_distance,choosen)
 				#print ("Choosen : " + rand_choosen.filename)
-				self.pix[coli,rowi]=choosen.color
+				self.pix[coli,rowi]=rand_choosen[1].color
 				self.array[coli,rowi]=Pixel(rand_choosen[1], pix, rand_choosen[0], min_distance)
 				rand_choosen[1].used += 1
 
@@ -104,6 +106,16 @@ class Photo:
 		for image in self.available_min:
 			out.write(image.filename + " utilisé " + str(image.used) + " fois\n")
 		out.close()
+	def report_distance(self,filename):
+		data={}
+		for rowi in range (self.height):
+			for coli in range (self.width):
+				pix = self.array[coli,rowi]
+				data[pix.distance] = "Line "+str(rowi)+" Col "+str(coli)+": "+pix.photo.filename+" (distance: "+str(pix.distance)+", min_distance"+str(pix.min_distance)+")"
+		log = open(filename, "w")
+		for key in sorted(data.iterkeys()):
+			log.write (data[key]+"\n")
+		log.close()
 
 	def write_im_script(self, im_script_file, log_file):
 		log = open(log_file, "w")
@@ -114,7 +126,7 @@ class Photo:
 			for coli in range (self.width):
 				pix = self.array[coli,rowi]
 				out.write(pix.photo.filename + " \\\n")
-				log.write ("Line "+str(rowi)+" Col "+str(coli)+": "+pix.photo.filename+" (distance: "+str(pix.distance)+")\n")
+				log.write ("Line "+str(rowi)+" Col "+str(coli)+": "+pix.photo.filename+" (distance: "+str(pix.distance)+", min_distance"+str(pix.min_distance)+")\n")
 		out.write("test.jpg")
 		out.close()
 
@@ -138,6 +150,7 @@ ph = Photo("base.png")
 ph.read_available_miniatures()
 
 ph.fill(rand=True)
+#ph.fill(rand=False)
 ph.save("beffill_result.pix.png")
 ph.write_im_script("beffill_montage.sh", "beffill_mosaique.log")
 ph.report_min_usage("beffill_photos.used.log")
@@ -146,4 +159,5 @@ ph.add_missing()
 ph.save("result.pix.png")
 ph.write_im_script("montage.sh", "mosaique.log")
 ph.report_min_usage("photos.used.log")
+ph.report_distance("distance.log")
 
