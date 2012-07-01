@@ -36,7 +36,7 @@ class Photo:
 	
 	def read_available_miniatures(self):
 		self.available_min = []
-		for infile in glob.glob("Photos/*.1px.png"):
+		for infile in glob.glob("work/*.1px.png"):
 			im = Image.open(infile)
 			im = im.convert('RGB')
 			data = list(im.getdata())
@@ -59,6 +59,7 @@ class Photo:
 					if tempdist < min_distance:
 						min_distance=tempdist
 						choosen = image
+						#print ("Choosen as min dist")
 					if tempdist < dist_threshold:
 						#print ("Added to random list")
 						distlist.append( (tempdist,image) )
