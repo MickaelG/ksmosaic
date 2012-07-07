@@ -15,9 +15,11 @@ test_surimp.jpg: test.jpg base.jpg
 
 base.png: $(IN_FILE) Makefile.conf
 	convert -resize $(MOS_SIZE) $< $@
+	#convert -colorspace Gray -resize $(MOS_SIZE) $< $@
 
 base.jpg: $(IN_FILE) Makefile.conf
 	convert -resize $(MOS_SIZE_PIX) $< $@
+	#convert -colorspace Gray -resize $(MOS_SIZE_PIX) $< $@
 
 save: DIR=result_$(shell date +%Y%m%d_%Hh%M)
 save:
@@ -57,7 +59,8 @@ $(WORK_DIR)/%.min.jpg: $(PHOTOS_DIR)/%.JPG
 	convert -resize $(MIN_SIZE) $< $@
 
 ALL_1PX_BW_TARGETS = $(subst 1px,1px_bw,$(ALL_1PX_TARGETS))
-all_bw: $(ALL_1PX_BW_TARGETS)
+ALL_MIN_BW_TARGETS = $(subst min,min_bw,$(ALL_MIN_TARGETS))
+all_bw: $(ALL_MIN_BW_TARGETS) $(ALL_1PX_BW_TARGETS)
 
 $(WORK_DIR)/%.1px_bw.png: $(WORK_DIR)/%.min_bw.jpg
 	convert -resize '1x1!' $< $@

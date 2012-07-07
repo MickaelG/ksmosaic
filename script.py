@@ -34,14 +34,19 @@ class Photo:
 		self.pix = im.load()
 		self.array = {}
 	
-	def read_available_miniatures(self):
+	def read_available_miniatures(self, BlackWhite=False):
 		self.available_min = []
-		for infile in glob.glob("work/*.1px.png"):
+		if ( BlackWhite ):
+			glob_1px = "work/*.1px_bw.png"
+		else:
+			glob_1px = "work/*.1px.png"
+		for infile in glob.glob(glob_1px):
 			im = Image.open(infile)
 			im = im.convert('RGB')
 			data = list(im.getdata())
 			print (infile + ": " + str(data[0]))
-			photofile = re.sub('1px.png', 'min.jpg', infile)
+			photofile = re.sub('.1px', '.min', infile)
+			photofile = re.sub('.png', '.jpg', photofile)
 			self.available_min.append( PhotoMin(photofile, data[0] ))
 
 	def fill(self, rand=True):
@@ -148,7 +153,7 @@ def ColorDistance(pix1, pix2):
 
 
 ph = Photo("base.png")
-ph.read_available_miniatures()
+ph.read_available_miniatures(BlackWhite=False)
 
 ph.fill(rand=True)
 #ph.fill(rand=False)
