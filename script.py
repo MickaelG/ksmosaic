@@ -49,16 +49,27 @@ class Photo:
 			photofile = re.sub('.png', '.jpg', photofile)
 			self.available_min.append( PhotoMin(photofile, data[0] ))
 
-	def fill(self, rand=True):
+	def fill(self, rand=True, max_photo_usage=20):
 		rand_filelist = []
 		dist_threshold = 12
+		print ("Starting fill…")
+
+		colrowList = []
 		for rowi in range (self.height):
-			print ("Processing row "+str(rowi))
 			for coli in range (self.width):
-				pix = self.pix[coli,rowi]
-				min_distance = 10000
-				distlist = []
-				for image in self.available_min:
+				colrowList.append( (coli, rowi) )
+		random.shuffle(colrowList)
+
+		# We fill pixels in random order so we can easily limit
+		# the number of usages of a photo
+		for index, (coli, rowi) in enumerate(colrowList):
+			if index % self.width == 0:
+				print ("processing col %i, row %i (index=%i)" % (coli, rowi, index))
+			pix = self.pix[coli,rowi]
+			min_distance = 10000
+			distlist = []
+			for image in self.available_min:
+				if image.used < max_photo_usage:
 					tempdist = ColorDistance(pix, image.color)
 					#print ("Distance: " + image.filename + " " + str(tempdist))
 					if tempdist < min_distance:
@@ -68,24 +79,27 @@ class Photo:
 					if tempdist < dist_threshold:
 						#print ("Added to random list")
 						distlist.append( (tempdist,image) )
-				if rand:
-					chooselist = []
-					for elem in distlist:
-						nb_elem = int(10*(dist_threshold-elem[0]))
-						for i in range(nb_elem):
-							chooselist.append(elem)
-					if len(chooselist) > 0:
-						rand_choosen = chooselist[random.randrange(len(chooselist))]
-					else:
-						rand_choosen = (min_distance,choosen)
+			if rand:
+				chooselist = []
+				for elem in distlist:
+					nb_elem = int(10*(dist_threshold-elem[0]))
+					for i in range(nb_elem):
+						chooselist.append(elem)
+				if len(chooselist) > 0:
+					rand_choosen = chooselist[random.randrange(len(chooselist))]
 				else:
 					rand_choosen = (min_distance,choosen)
-				#print ("Choosen : " + rand_choosen.filename)
-				self.pix[coli,rowi]=rand_choosen[1].color
-				self.array[coli,rowi]=Pixel(rand_choosen[1], pix, rand_choosen[0], min_distance)
-				rand_choosen[1].used += 1
+			else:
+				rand_choosen = (min_distance,choosen)
+			#print ("Choosen : " + rand_choosen.filename)
+			self.pix[coli,rowi]=rand_choosen[1].color
+			self.array[coli,rowi]=Pixel(rand_choosen[1], pix, rand_choosen[0], min_distance)
+			rand_choosen[1].used += 1
 
 	def add_missing(self):
+		"""
+		Add photos which does not appear in the mosaic after filling
+		"""
 		NotUsed = []
 		for image in self.available_min:
 			if image.used == 0:
@@ -155,11 +169,11 @@ def ColorDistance(pix1, pix2):
 ph = Photo("base.png")
 ph.read_available_miniatures(BlackWhite=False)
 
-ph.fill(rand=True)
+ph.fill(rand=True, max_photo_usage=20)
 #ph.fill(rand=False)
-ph.save("beffill_result.pix.png")
-ph.write_im_script("beffill_montage.sh", "beffill_mosaique.log")
-ph.report_min_usage("beffill_photos.used.log")
+#ph.save("beffill_result.pix.png")
+#ph.write_im_script("beffill_montage.sh", "beffill_mosaique.log")
+#ph.report_min_usage("beffill_photos.used.log")
 
 ph.add_missing()
 ph.save("result.pix.png")
