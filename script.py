@@ -6,6 +6,8 @@ import glob, os, re, stat
 import random
 from math import sqrt
 
+#import pdb
+#pdb.set_trace()
 
 class PhotoMin:
 	def __init__(self, filename, color):
@@ -19,7 +21,6 @@ class Pixel:
 		self.distance = distance
 		self.min_distance = min_distance
 		self.target_color = target_color
-		self.used = 0
 
 class Photo:
 	def __init__(self, basefile):
@@ -64,12 +65,19 @@ class Photo:
 		# the number of usages of a photo
 		for index, (coli, rowi) in enumerate(colrowList):
 			if index % self.width == 0:
-				print ("processing col %i, row %i (index=%i)" % (coli, rowi, index))
+				print ("%i/%i points processed (%i%%)" % (index, self.width*self.height, index/(self.width*self.height)))
 			pix = self.pix[coli,rowi]
 			min_distance = 10000
 			distlist = []
+			around_list = []
+			for c in (coli-1, coli, coli+1):
+				for r in (rowi-1, rowi, rowi+1):
+					try:
+						around_list.append( self.array[c,r].photo )
+					except KeyError:
+						None
 			for image in self.available_min:
-				if image.used < max_photo_usage:
+				if image.used < max_photo_usage and image not in around_list:
 					tempdist = ColorDistance(pix, image.color)
 					#print ("Distance: " + image.filename + " " + str(tempdist))
 					if tempdist < min_distance:
@@ -96,30 +104,31 @@ class Photo:
 			self.array[coli,rowi]=Pixel(rand_choosen[1], pix, rand_choosen[0], min_distance)
 			rand_choosen[1].used += 1
 
-	def add_missing(self):
+	def add_missing(self, min_photo_usage=1):
 		"""
 		Add photos which does not appear in the mosaic after filling
 		"""
-		NotUsed = []
+		NotEnoughUsed = []
 		for image in self.available_min:
-			if image.used == 0:
-				NotUsed.append(image)
-		for image in NotUsed:
-			min_distance = 10000
-			for rowi in range (self.height):
-				for coli in range (self.width):
-					if self.array[coli,rowi].photo.used > 1:
-						pix = self.pix[coli,rowi]
-						tempdist = ColorDistance(pix, image.color)
-						if tempdist < min_distance:
-							min_distance=tempdist
-							choosen = (coli,rowi)
-			self.pix[choosen]=image.color
-			self.array[choosen].photo.used -= 1
-			self.array[choosen].photo = image
-			self.array[choosen].photo.used += 1
-			self.array[choosen].distance = min_distance
-			print ( "Missing " + image.filename + " set at (" + str(choosen) + ")" )
+			if image.used < min_photo_usage:
+				NotEnoughUsed.append(image)
+		for image in NotEnoughUsed:
+			for nb in range(min_photo_usage-image.used):
+				min_distance = 10000
+				for rowi in range (self.height):
+					for coli in range (self.width):
+						if self.array[coli,rowi].photo.used > min_photo_usage:
+							pix = self.pix[coli,rowi]
+							tempdist = ColorDistance(pix, image.color)
+							if tempdist < min_distance:
+								min_distance=tempdist
+								choosen = (coli,rowi)
+				self.pix[choosen]=image.color
+				self.array[choosen].photo.used -= 1
+				self.array[choosen].photo = image
+				self.array[choosen].photo.used += 1
+				self.array[choosen].distance = min_distance
+				print ( "Missing " + image.filename + " set at (" + str(choosen) + ")" )
 
 	def report_min_usage(self, filename):
 		out = open(filename, "w")
@@ -175,7 +184,7 @@ ph.fill(rand=True, max_photo_usage=20)
 #ph.write_im_script("beffill_montage.sh", "beffill_mosaique.log")
 #ph.report_min_usage("beffill_photos.used.log")
 
-ph.add_missing()
+ph.add_missing(min_photo_usage=2)
 ph.save("result.pix.png")
 ph.write_im_script("montage.sh", "mosaique.log")
 ph.report_min_usage("photos.used.log")

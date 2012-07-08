@@ -13,11 +13,11 @@ montage.sh: base.png script.py all_1px
 test_surimp.jpg: test.jpg base.jpg
 	composite -blend $(SURIMP_PERCENT) base.jpg $< $@
 
-base.png: $(IN_FILE) Makefile.conf
+base.png: $(IN_FILE)
 	convert -resize $(MOS_SIZE) $< $@
 	#convert -colorspace Gray -resize $(MOS_SIZE) $< $@
 
-base.jpg: $(IN_FILE) Makefile.conf
+base.jpg: $(IN_FILE)
 	convert -resize $(MOS_SIZE_PIX) $< $@
 	#convert -colorspace Gray -resize $(MOS_SIZE_PIX) $< $@
 
