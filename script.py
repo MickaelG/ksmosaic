@@ -174,17 +174,25 @@ def ColorDistance(pix1, pix2):
 	dist = col1.delta_e(col2)
 	return dist
 
+#max_photo_usage = 8
+#min_photo_usage = 0
+
+max_photo_usage = 20
+min_photo_usage = 3
+
+max_photo_usage = 18
+min_photo_usage = 1
 
 ph = Photo("base.png")
 ph.read_available_miniatures(BlackWhite=False)
 
-ph.fill(rand=True, max_photo_usage=20)
+ph.fill(rand=False, max_photo_usage=max_photo_usage)
 #ph.fill(rand=False)
-#ph.save("beffill_result.pix.png")
-#ph.write_im_script("beffill_montage.sh", "beffill_mosaique.log")
-#ph.report_min_usage("beffill_photos.used.log")
+ph.save("result.beffill.pix.png")
+ph.write_im_script("montage.beffill.sh", "mosaique.beffil.log")
+ph.report_min_usage("photos.used.beffill.log")
 
-ph.add_missing(min_photo_usage=2)
+ph.add_missing(min_photo_usage=min_photo_usage)
 ph.save("result.pix.png")
 ph.write_im_script("montage.sh", "mosaique.log")
 ph.report_min_usage("photos.used.log")

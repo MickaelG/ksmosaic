@@ -21,14 +21,21 @@ base.jpg: $(IN_FILE)
 	convert -resize $(MOS_SIZE_PIX) $< $@
 	#convert -colorspace Gray -resize $(MOS_SIZE_PIX) $< $@
 
-save: DIR=result_$(shell date +%Y%m%d_%Hh%M)
+beffill: base.jpg
+	chmod 775 montage.beffill.sh
+	sed -i -e 's/test.jpg/test.beffill.jpg/' montage.beffill.sh
+	./montage.beffill.sh
+	composite -blend $(SURIMP_PERCENT) base.jpg test.beffill.jpg test_surimp.beffill.jpg
+
+save: DIR=results/result_$(shell date +%Y%m%d_%Hh%M)
 save:
 	mkdir $(DIR)
 	cp test*.jpg $(DIR)
 	cp *.log $(DIR)
-	cp *montage.sh $(DIR)
+	cp *montage*.sh $(DIR)
 	cp $(IN_FILE) $(DIR)
-	cp result.pix.png $(DIR)
+	cp base.png $(DIR)
+	cp result*.pix.png $(DIR)
 	cp Makefile.conf $(DIR)
 
 clean:
