@@ -1,0 +1,25 @@
+
+[parameters]
+#Base image to build the mosaic
+MOSAIC_IMAGE=SANY0558.JPG
+OUT_FILE_NAME=test.jpg
+
+#Size of the mosaic in number of images
+MOSAIC_SIZE='60x60!'
+
+#Directory containing photos to build the mosaic
+IMAGES_DIR = Photos
+#Nb of pixels of an individual image in the mosaic
+IMAGE_SIZE=80x60
+
+#Min number of occurence of an image in the mosaic
+MIN_USAGE = 1
+#Max number of occurence of an image in the mosaic
+MAX_USAGE = 20
+
+#Temp directory to save intermediate files
+WORK_DIR= work
+
+SURIMP_PERCENT = 30
+
+
