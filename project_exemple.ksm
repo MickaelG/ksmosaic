@@ -10,7 +10,7 @@ MOSAIC_SIZE='60x60!'
 #Directory containing photos to build the mosaic
 IMAGES_DIR = Photos
 #Nb of pixels of an individual image in the mosaic
-IMAGE_SIZE=80x60
+IMAGES_SIZE=80x60
 
 #Min number of occurence of an image in the mosaic
 MIN_USAGE = 1
