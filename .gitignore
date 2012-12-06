@@ -6,3 +6,4 @@ montage.sh
 .*.swp
 *.log
 result_*
+*.pyc
