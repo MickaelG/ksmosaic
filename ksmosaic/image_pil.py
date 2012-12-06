@@ -5,19 +5,39 @@ def resize( input_file, output_file, size ):
 	"""
 	convert -resize $(size) input_file output_file_or_dir
 	"""
-	#TODO
+	if __debug__:
+		print ("Resizing image: %s (size:%ix%i)" % (input_file, size[0], size[1]))
+	im = Image.open(input_file)
+	result = im.resize(size, Image.ANTIALIAS)
+	if __debug__:
+		print ("Saving resized image: %s" % (output_file))
+	result.save(output_file)
 
-def composite( input_file, output_file, surimp_percent ):
+
+def blend( input_file1, input_file2, output_file, surimp_percent ):
 	"""
 	composite -blend $(SURIMP_PERCENT) base.jpg input output
 	"""
-	#TODO
+	background = Image.open(input_file1)
+	im = Image.open(input_file2)
+	result = Image.blend(im, background, surimp_percent/100.0)
+	result.save(output_file)
 
-def montage ( width, height, input_list, output_file )
+
+def montage ( width, height, input_list, output_file ):
 	"""
 	montage -tile "width"x"height" -geometry +0+0 input_list output_file
 	"""
-	#TODO
+	(img_width, img_height, pix) = read(input_list[0])
+	total_width = width*img_width
+	total_height = height*img_height
+	res_image = Image.new('RGB', (total_width, total_height), None)
+	for x in range(width):
+		for y in range(height):
+			im = Image.open(input_list[x+width*y])
+			res_image.paste( im, (x*img_width, y*img_height))
+	res_image.save(output_file)
+
 
 def read( input_file ):
 	"""
@@ -27,9 +47,11 @@ def read( input_file ):
 	- height
 	- pix : dictionary of pixels in RGB, addressed by (x,y) tuple
 	"""
+	if __debug__:
+		print("Reading image file: %s" % (input_file))
 	im = Image.open(input_file)
 	im = im.convert('RGB')
-	(basewidth, baseheight) = im.size
+	(width, height) = im.size
 	pix = im.load()
 
 	return ( width, height, pix )
