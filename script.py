@@ -135,7 +135,7 @@ class Mosaic:
 					for coli in range (self.width):
 						if self.array[coli,rowi].photo.used > min_photo_usage:
 							pix = self.array[coli,rowi]
-							tempdist = ColorDistance(pix.color, min_image.color)
+							tempdist = ColorDistance(pix.target_color, min_image.color)
 							if tempdist < min_distance:
 								min_distance=tempdist
 								choosen = (coli,rowi)
