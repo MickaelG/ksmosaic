@@ -4,17 +4,10 @@
 import sys
 import ksmosaic.image_pil as imagelib
 #import ksmosaic.image_wand as imagelib
+import ksmosaic.color as color
 
 import glob, os, errno
 import random
-
-try:
-	from colormath.color_objects import RGBColor
-	HasColormath=True
-except ImportError:
-	print "WARNING: colormath module not available. will use euclidian RGB distance to replace it"
-	HasColormath=False
-	from math import sqrt
 
 #import pdb
 #pdb.set_trace()
@@ -110,7 +103,7 @@ class Mosaic:
 			choosen = None
 			for min_image in self.available_min:
 				if min_image.used < max_photo_usage and min_image not in around_list:
-					tempdist = ColorDistance(pix.target_color, min_image.color)
+					tempdist = color.get_distance(pix.target_color, min_image.color)
 					#print ("Distance: " + min_image.filename + " " + str(tempdist))
 					if tempdist < min_distance:
 						min_distance=tempdist
@@ -135,7 +128,7 @@ class Mosaic:
 					for coli in range (self.width):
 						if self.array[coli,rowi].photo.used > min_photo_usage:
 							pix = self.array[coli,rowi]
-							tempdist = ColorDistance(pix.target_color, min_image.color)
+							tempdist = color.get_distance(pix.target_color, min_image.color)
 							if tempdist < min_distance:
 								min_distance=tempdist
 								choosen = (coli,rowi)
@@ -179,20 +172,6 @@ class Mosaic:
 			for coli in range (self.width):
 				pix = self.array[coli,rowi]
 				yield directory+pix.photo.filename
-
-
-def ColorDistance(pix1, pix2):
-	'''Computes distance beween two colors. based on colormath if available,
-	   or computes a simple euclidian distance on RGB values
-	'''
-	if HasColormath:
-		col1 = RGBColor(pix1[0], pix1[1], pix1[2])
-		col2 = RGBColor(pix2[0], pix2[1], pix2[2])
-		#dist = col1.delta_e(col2, mode='cmc', pl=1, pc=1)
-		dist = col1.delta_e(col2)
-	else:
-		dist = sqrt ( pow(pix1[0]-pix2[0],2)+pow(pix1[1]-pix2[1],2)+pow(pix1[2]-pix2[2],2) )
-	return dist
 
 def create_min_images( input_dir, output_dir, size, force=False ):
 	"""
