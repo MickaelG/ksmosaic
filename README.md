@@ -1,6 +1,10 @@
 
 This program creates a mosaic by assembling several images to create one big picture.
 
+# Dependencies
+- PIL or wand for images manipulation
+- optionally colormath for a better color distance calculation
+
 # TODO
 - check that the number of images and the given constraints match
 - add Wand support (http://dahlia.kr/wand/), and benchmark it compared to PIL
