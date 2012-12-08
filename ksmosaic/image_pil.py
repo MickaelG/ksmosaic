@@ -9,8 +9,6 @@ def resize( input_file, output_file, size ):
 		print ("Resizing image: %s (size:%ix%i)" % (input_file, size[0], size[1]))
 	im = Image.open(input_file)
 	result = im.resize(size, Image.ANTIALIAS)
-	if __debug__:
-		print ("Saving resized image: %s" % (output_file))
 	result.save(output_file)
 
 
