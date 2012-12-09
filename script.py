@@ -29,7 +29,7 @@ def read_conf(configfile):
 	conf['SURIMP_PERCENT'] = int(conf['SURIMP_PERCENT'])
 	return conf
 
-class PhotoMin:
+class Photo:
 	def __init__(self, filename, color, min_occurences=None, max_occurences=None):
 		self.filename = os.path.basename(filename)
 		self.color = color
@@ -37,21 +37,48 @@ class PhotoMin:
 		self.min_occurences = min_occurences
 		self.max_occurences = max_occurences
 
+class PhotoList(list):
+	def __init__(self, input_dir=None):
+		list.__init__(self)
+		if input_dir:
+			self.read_available(input_dir)
+	def read_available(self, input_dir):
+		glob_1px = input_dir + "/*"
+		for infile in glob.glob(glob_1px):
+			(width, height, data) = imagelib.read(infile)
+			if width != 1 or height != 1:
+				raise StdError("%s should be a 1px image" % (infile))
+			print (infile + ": " + str(data[0,0]))
+			self.append( Photo(infile, data[0,0] ))
+	def write_images_color(self, filename):
+		outf = open(filename, "w")
+		for image in self:
+			outf.write("%s	%s\n" % (image.filename, image.color))
+	def report_min_usage(self, filename):
+		out = open(filename, "w")
+		for min_image in self:
+			out.write(min_image.filename + " utilisé " + str(min_image.used) + " fois\n")
+		out.close()
+
 class Pixel:
-	def __init__(self, target_color, photo=None, distance=None, min_distance=None):
-		self.photo = photo
-		self.distance = distance
-		self.min_distance = min_distance
+	def __init__(self, target_color, photo=None, distance=None):
 		self.target_color = target_color
-	def set_choosen(self, photo, distance):
+		self.photo = None
+		self.distance = None
+		self.min_distance = None
+		if self.photo:
+			self.set_photo(photo, distance)
+	def set_photo(self, photo, distance):
+		if self.photo:
+			self.photo.used -= 1
 		self.photo = photo
+		self.photo.used += 1
 		if self.min_distance == None or self.min_distance > distance:
 			self.min_distance = distance
 		self.distance = distance
 
 class Mosaic:
 	def __init__(self, image):
-		#assert width*2 == height*3
 		self.image = image
 		(self.width, self.height, pix_array) = imagelib.read(self.image)
 		self.array = {}
@@ -59,33 +86,15 @@ class Mosaic:
 			for y in range(self.height):
 				self.array[x,y] = Pixel(pix_array[x,y])
 
-	def read_available_miniatures(self, input_dir):
-		self.available_min = []
-		glob_1px = input_dir + "/*"
-		for infile in glob.glob(glob_1px):
-			(width, height, data) = imagelib.read(infile)
-			if width != 1 or height != 1:
-				raise StdError("%s should be a 1px image" % (infile))
-			print (infile + ": " + str(data[0,0]))
-			self.available_min.append( PhotoMin(infile, data[0,0] ))
-
-		def write_images_color(self, filename):
-			outf = open(filename, "w")
-			for image in self.available_min:
-				outf.write("%s	%s\n" % (image.filename, image.color))
-
-
-	def fill(self, max_photo_usage=20):
+	def fill(self, photo_list, max_photo_usage=20):
 		rand_filelist = []
 		dist_threshold = 12
 		print ("Starting fill…")
-
 		colrowList = []
 		for rowi in range (self.height):
 			for coli in range (self.width):
 				colrowList.append( (coli, rowi) )
 		random.shuffle(colrowList)
-
 		# We fill pixels in random order so we can easily limit
 		# the number of usages of a photo
 		for index, (coli, rowi) in enumerate(colrowList):
@@ -101,24 +110,20 @@ class Mosaic:
 					except KeyError:
 						None
 			choosen = None
-			for min_image in self.available_min:
+			for min_image in photo_list:
 				if min_image.used < max_photo_usage and min_image not in around_list:
 					tempdist = color.get_distance(pix.target_color, min_image.color)
-					#print ("Distance: " + min_image.filename + " " + str(tempdist))
 					if tempdist < min_distance:
 						min_distance=tempdist
 						choosen = min_image
-						#print ("Choosen as min dist")
-			#print ("Choosen : " + choosen.filename)
-			self.array[coli,rowi].set_choosen(choosen, min_distance)
-			choosen.used += 1
+			self.array[coli,rowi].set_photo(choosen, min_distance)
 
-	def add_missing(self, min_photo_usage=1):
+	def add_missing(self, photo_list, min_photo_usage=1):
 		"""
 		Add some photos in the mosaic to respect the min usage parameter
 		"""
 		to_be_corrected = []
-		for min_image in self.available_min:
+		for min_image in photo_list:
 			if min_image.used < min_photo_usage:
 				to_be_corrected.append(min_image)
 		for min_image in to_be_corrected:
@@ -131,18 +136,10 @@ class Mosaic:
 							tempdist = color.get_distance(pix.target_color, min_image.color)
 							if tempdist < min_distance:
 								min_distance=tempdist
-								choosen = (coli,rowi)
-				self.array[choosen].photo.used -= 1
-				self.array[choosen].photo = min_image
-				self.array[choosen].photo.used += 1
-				self.array[choosen].distance = min_distance
-				print ( "Missing " + min_image.filename + " set at (" + str(choosen) + ")" )
+								choosen_location = (coli,rowi)
+				self.array[choosen_location].set_photo(min_image, min_distance)
+				print ( "Missing " + min_image.filename + " set at (" + str(choosen_location) + ")" )
 
-	def report_min_usage(self, filename):
-		out = open(filename, "w")
-		for min_image in self.available_min:
-			out.write(min_image.filename + " utilisé " + str(min_image.used) + " fois\n")
-		out.close()
 	def report_distance(self,filename):
 		data={}
 		for rowi in range (self.height):
@@ -213,12 +210,12 @@ def main():
 
 	imagelib.resize( conf['MOSAIC_IMAGE'], work_dir+"/pix.jpg", mosaic_size )
 	ph = Mosaic(work_dir+"/pix.jpg")
-	ph.read_available_miniatures(px_images_dir)
+	photo_list = PhotoList(px_images_dir)
 
-	ph.fill(max_photo_usage=conf['MAX_USAGE'])
-	ph.add_missing(min_photo_usage=conf['MIN_USAGE'])
+	ph.fill(photo_list, max_photo_usage=conf['MAX_USAGE'])
+	ph.add_missing(photo_list, min_photo_usage=conf['MIN_USAGE'])
 	ph.write_im_script(work_dir+"montage.sh", work_dir+"mosaique.log")
-	ph.report_min_usage(work_dir+"photos.used.log")
+	photo_list.report_min_usage(work_dir+"photos.used.log")
 	ph.report_distance(work_dir+"distance.log")
 
 	imagelib.montage ( ph.width, ph.height, list(ph.list_generator(min_images_dir)), work_dir+"out.jpg" )
