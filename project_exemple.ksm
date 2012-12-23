@@ -20,6 +20,7 @@ MAX_USAGE = 20
 #Temp directory to save intermediate files
 WORK_DIR= work
 
+#Set to 0 if you don't want any reference watermark
 SURIMP_PERCENT = 30
 
 

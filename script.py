@@ -5,6 +5,7 @@ import sys
 import ksmosaic.image_pil as imagelib
 #import ksmosaic.image_wand as imagelib
 import ksmosaic.color as color
+import ksmosaic.configuration as config
 
 import glob, os, errno
 import random
@@ -12,22 +13,6 @@ import random
 #import pdb
 #pdb.set_trace()
 
-def read_conf(configfile):
-	import ConfigParser
-	config=ConfigParser.ConfigParser()
-	config.read(configfile)
-	conf = {}
-	param_list = [ "MOSAIC_IMAGE", "OUT_FILE_NAME", "MOSAIC_SIZE",
-	               "IMAGES_DIR", "IMAGES_SIZE",
-	               "MIN_USAGE", "MAX_USAGE", "WORK_DIR", "SURIMP_PERCENT" ]
-	for param in param_list:
-		conf[param] = config.get("parameters", param)
-	conf['IMAGES_SIZE'] = [int(elem) for elem in conf['IMAGES_SIZE'].split("x")]
-	conf['MOSAIC_SIZE'] = [int(elem) for elem in conf['MOSAIC_SIZE'].split("x")]
-	conf['MAX_USAGE'] = int(conf['MAX_USAGE'])
-	conf['MIN_USAGE'] = int(conf['MIN_USAGE'])
-	conf['SURIMP_PERCENT'] = int(conf['SURIMP_PERCENT'])
-	return conf
 
 class Photo:
 	def __init__(self, filename, color, min_occurences=None, max_occurences=None):
@@ -50,6 +35,8 @@ class PhotoList(list):
 				raise StdError("%s should be a 1px image" % (infile))
 			print (infile + ": " + str(data[0,0]))
 			self.append( Photo(infile, data[0,0] ))
+	def sort_by_brightness(self):
+		self.sort(key=lambda elem: color.get_brightness(elem.color))
 	def write_images_color(self, filename):
 		outf = open(filename, "w")
 		for image in self:
@@ -61,14 +48,14 @@ class PhotoList(list):
 		out.close()
 
 class Pixel:
-	def __init__(self, target_color, photo=None, distance=None):
+	def __init__(self, target_color=None, photo=None, distance=None):
 		self.target_color = target_color
 		self.photo = None
 		self.distance = None
 		self.min_distance = None
 		if self.photo:
 			self.set_photo(photo, distance)
-	def set_photo(self, photo, distance):
+	def set_photo(self, photo, distance=None):
 		if self.photo:
 			self.photo.used -= 1
 		self.photo = photo
@@ -78,13 +65,18 @@ class Pixel:
 		self.distance = distance
 
 class Mosaic:
-	def __init__(self, image):
-		self.image = image
-		(self.width, self.height, pix_array) = imagelib.read(self.image)
+	def __init__(self, image=None, size=None):
 		self.array = {}
-		for x in range(self.width):
-			for y in range(self.height):
-				self.array[x,y] = Pixel(pix_array[x,y])
+		self.image = image
+		if image:
+			(self.width, self.height, pix_array) = imagelib.read(self.image)
+			for pix in self.iter_pix():
+				self.array[pix] = Pixel(pix_array[pix])
+		else:
+			self.width = size[0]
+			self.height = size[1]
+			for pix in self.iter_pix():
+				self.array[pix] = Pixel()
 
 	def fill(self, photo_list, max_photo_usage=20):
 		rand_filelist = []
@@ -140,6 +132,28 @@ class Mosaic:
 				self.array[choosen_location].set_photo(min_image, min_distance)
 				print ( "Missing " + min_image.filename + " set at (" + str(choosen_location) + ")" )
 
+	def get_border_length(self, offset=0):
+		return 2*self.width + 2*self.height - 4 - 8*offset
+	def add_border(self, photo_list, offset=0):
+		for index, pix in enumerate(self.iter_border(offset)):
+			photo_index = index % len(photo_list)
+			self.array[pix].set_photo(photo_list[photo_index])
+
+	def iter_pix(self):
+		for x in range(self.width):
+			for y in range(self.height):
+				yield(x,y)
+
+	def iter_border(self, offset=0):
+		for x in range(offset, self.width-offset):
+			yield(x,offset)
+		for y in range(offset+1, self.height-offset-1):
+			yield(self.width-1-offset, y)
+		for x in reversed(range(offset, self.width-offset)):
+			yield(x,self.height-1-offset)
+		for y in reversed(range(offset+1, self.height-offset-1)):
+			yield(offset,y)
+
 	def report_distance(self,filename):
 		data={}
 		for rowi in range (self.height):
@@ -168,7 +182,10 @@ class Mosaic:
 		for rowi in range (self.height):
 			for coli in range (self.width):
 				pix = self.array[coli,rowi]
-				yield directory+pix.photo.filename
+				if pix.photo:
+					yield directory+pix.photo.filename
+				else:
+					yield None
 
 def create_min_images( input_dir, output_dir, size, force=False ):
 	"""
@@ -193,37 +210,70 @@ def mkdir(dirname):
 			raise
 
 def main():
-	conf = read_conf(sys.argv[1])
+	main_mosaic()
+	#main_test()
 
-	work_dir = conf['WORK_DIR']+"/"
-	min_images_dir = work_dir+"min_"+"x".join([str(elem) for elem in conf['IMAGES_SIZE']])+"/"
-	px_images_dir = work_dir+"1px/"
+def main_mosaic():
+	conf = config.Conf(sys.argv[1])
+
+	setup_work_dir ( conf.images_dir, conf.work_dir, conf.min_images_dir, conf.images_size, conf.px_images_dir )
+
+	ph = Mosaic(image=conf.work_dir+"/pix.jpg")
+	photo_list = PhotoList(conf.px_images_dir)
+
+	ph.fill(photo_list, max_photo_usage=conf.max_usage)
+	ph.add_missing(photo_list, min_photo_usage=conf.min_usage)
+	ph.write_im_script(conf.work_dir+"montage.sh", conf.work_dir+"mosaique.log")
+	photo_list.report_min_usage(conf.work_dir+"photos.used.log")
+	ph.report_distance(conf.work_dir+"distance.log")
+
+	imagelib.montage ( (ph.width, ph.height), conf.images_size, list(ph.list_generator(conf.min_images_dir)), conf.work_dir+"out.jpg" )
+
+	resized_image_file = conf.work_dir+"/resized.jpg"
+	imagelib.resize( conf.mosaic_image, resized_image_file, conf.total_size )
+	imagelib.blend( resized_image_file, conf.work_dir+"out.jpg", conf.out_file_name, conf.surimp )
+
+def setup_work_dir ( images_dir, work_dir, min_images_dir, min_images_size, px_images_dir ):
 	mkdir(work_dir)
 	mkdir(min_images_dir)
 	mkdir(px_images_dir)
-	mosaic_size = conf['MOSAIC_SIZE']
-	image_size = conf['IMAGES_SIZE']
-
-	create_min_images( conf['IMAGES_DIR'], min_images_dir, image_size )
+	create_min_images( images_dir, min_images_dir, min_images_size )
 	#we build 1px images from miniatures to save computing time
-	create_min_images( min_images_dir, px_images_dir, (1,1) )
+	create_min_images( images_dir, px_images_dir, (1,1) )
 
-	imagelib.resize( conf['MOSAIC_IMAGE'], work_dir+"/pix.jpg", mosaic_size )
-	ph = Mosaic(work_dir+"/pix.jpg")
-	photo_list = PhotoList(px_images_dir)
+def main_test():
+	conf = config.Conf(sys.argv[1])
 
-	ph.fill(photo_list, max_photo_usage=conf['MAX_USAGE'])
-	ph.add_missing(photo_list, min_photo_usage=conf['MIN_USAGE'])
-	ph.write_im_script(work_dir+"montage.sh", work_dir+"mosaique.log")
-	photo_list.report_min_usage(work_dir+"photos.used.log")
-	ph.report_distance(work_dir+"distance.log")
+	setup_work_dir ( conf.images_dir, conf.work_dir, conf.min_images_dir, conf.images_size, conf.px_images_dir )
 
-	imagelib.montage ( ph.width, ph.height, list(ph.list_generator(min_images_dir)), work_dir+"out.jpg" )
+	ph = Mosaic(size=conf.mosaic_size)
+	photo_list = PhotoList(conf.px_images_dir)
 
-	total_size = (mosaic_size[0]*image_size[0], mosaic_size[1]*image_size[1])
-	resized_image_file = work_dir+"/resized.jpg"
-	imagelib.resize( conf['MOSAIC_IMAGE'], resized_image_file, total_size )
-	imagelib.blend( resized_image_file, work_dir+"out.jpg", conf['OUT_FILE_NAME'], conf['SURIMP_PERCENT'] )
+	photo_list.sort_by_brightness()
+	nb_light_photos = ph.get_border_length(0) + ph.get_border_length(1) + ph.get_border_length(2) + ph.get_border_length(3)
+	nb_dark_photos = ph.get_border_length(4)
+
+	dark_photo_list = photo_list[0:nb_dark_photos]
+	light_photo_list = photo_list[len(photo_list)-nb_light_photos:]
+
+	random.shuffle(dark_photo_list)
+	random.shuffle(light_photo_list)
+
+	ph.add_border ( light_photo_list, 0 )
+	del(light_photo_list[0:ph.get_border_length(0)])
+	ph.add_border ( light_photo_list, 1 )
+	del(light_photo_list[0:ph.get_border_length(1)])
+	ph.add_border ( light_photo_list, 2 )
+	del(light_photo_list[0:ph.get_border_length(2)])
+	ph.add_border ( light_photo_list, 3 )
+
+	ph.add_border ( dark_photo_list, 4 )
+
+	photo_list.report_min_usage(conf.work_dir+"photos.used.log")
+
+	imagelib.montage ( (ph.width, ph.height), conf.images_size,
+	                   list(ph.list_generator(conf.min_images_dir)),
+	                   conf.work_dir+"out.jpg" )
 
 if __name__ == "__main__":
 	main()

@@ -12,13 +12,13 @@ def resize( input_file, output_file, size ):
 		im.save(filename=output_file)
 
 
-def blend( input_file1, input_file2, output_file, surimp_percent ):
+def blend( input_file1, input_file2, output_file, surimp ):
 	"""
 	composite -blend $(SURIMP_PERCENT) base.jpg input output
 	"""
 	with Image(filename=input_file2) as background, \
 	     Image(filename=input_file1) as im:
-		background.watermark(im, 1-(surimp_percent/100.0))
+		background.watermark(im, 1-surimp)
 		background.save(filename=output_file)
 
 

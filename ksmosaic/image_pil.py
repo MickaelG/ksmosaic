@@ -12,28 +12,31 @@ def resize( input_file, output_file, size ):
 	result.save(output_file)
 
 
-def blend( input_file1, input_file2, output_file, surimp_percent ):
+def blend( input_file1, input_file2, output_file, surimp ):
 	"""
 	composite -blend $(SURIMP_PERCENT) base.jpg input output
 	"""
 	background = Image.open(input_file1)
 	im = Image.open(input_file2)
-	result = Image.blend(im, background, surimp_percent/100.0)
+	result = Image.blend(im, background, surimp)
 	result.save(output_file)
 
 
-def montage ( width, height, input_list, output_file ):
+def montage ( size, img_size, input_list, output_file ):
 	"""
 	montage -tile "width"x"height" -geometry +0+0 input_list output_file
 	"""
-	(img_width, img_height, pix) = read(input_list[0])
+	(width, height) = size
+	(img_width, img_height) = img_size
 	total_width = width*img_width
 	total_height = height*img_height
 	res_image = Image.new('RGB', (total_width, total_height), None)
 	for x in range(width):
 		for y in range(height):
-			im = Image.open(input_list[x+width*y])
-			res_image.paste( im, (x*img_width, y*img_height))
+			image = input_list[x+width*y]
+			if image:
+				im = Image.open(image)
+				res_image.paste( im, (x*img_width, y*img_height))
 	res_image.save(output_file)
 
 
